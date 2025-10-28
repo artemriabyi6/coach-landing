@@ -32,6 +32,12 @@ export function Footer() {
             >
               Нагору ↑
             </Button>
+            <button
+  onClick={() => window.open('/admin', '_blank')}
+  className="block text-gray-400 hover:text-white transition-colors text-left"
+>
+  Адмін-панель
+</button>
           </div>
 
           {/* Navigation */}
