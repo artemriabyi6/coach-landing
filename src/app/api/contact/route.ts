@@ -1,19 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { contactFormSchema } from '../../../lib/validation'
-import { createContact } from '../../../lib/db'
+import { createContact, getContacts } from '../../../lib/db'
 
+// GET - отримання всіх контактів
+export async function GET() {
+  try {
+    const contacts = await getContacts()
+    
+    return NextResponse.json(contacts, { status: 200 })
+  } catch (error) {
+    console.error('Error fetching contacts:', error)
+    return NextResponse.json(
+      { error: 'Помилка при отриманні заявок' },
+      { status: 500 }
+    )
+  }
+}
+
+// POST - створення нового контакту
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    console.log('📨 Received contact form data:', body)
     
     // Валідація даних
     const validatedData = contactFormSchema.parse(body)
-    console.log('✅ Data validation passed')
     
     // Зберігаємо в базу даних
     const contact = await createContact(validatedData)
-    console.log('💾 Contact saved to database:', contact.id)
+    
+    console.log('📝 Contact form processed successfully:', contact.id)
     
     return NextResponse.json(
       { 
@@ -25,11 +40,6 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     console.error('❌ Error processing contact form:', error)
-    
-    // Детальніше логуємо помилку валідації
-    if (error instanceof Error && error.name === 'ZodError') {
-      console.error('📋 Validation errors:', error)
-    }
     
     return NextResponse.json(
       { 
