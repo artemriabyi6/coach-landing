@@ -3,8 +3,13 @@
 import { Button } from '../ui/Button'
 
 export function HeroSection() {
-  const scrollToContact = () => {
+
+   const scrollToContact = () => {
     document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const scrollToCourses = () => {
+    document.getElementById('courses')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -31,23 +36,23 @@ export function HeroSection() {
           Від резерву до основи за <strong>8 тижнів</strong>. Без шаблонів, тільки персональний підхід.
         </p>
         
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-          <Button 
-            size="lg" 
-            className="text-lg px-8 py-4 rounded-xl shadow-2xl hover:shadow-blue-600/25 transition-all duration-300 transform hover:-translate-y-1"
-            onClick={scrollToContact}
-          >
-            🎯 Почати тренуватися
-          </Button>
-          <Button 
-            variant="outline" 
-            size="lg" 
-            className="text-lg px-8 py-4 rounded-xl border-2 hover:border-blue-300 transition-all duration-300"
-            onClick={() => window.open('#courses', '_self')}
-          >
-            📚 Переглянути курси
-          </Button>
-        </div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+        <Button 
+          size="lg" 
+          className="text-lg px-8 py-4 rounded-xl shadow-2xl hover:shadow-blue-600/25 transition-all duration-300 transform hover:-translate-y-1"
+          onClick={scrollToContact}
+        >
+          🎯 Почати тренуватися
+        </Button>
+        <Button 
+          variant="outline" 
+          size="lg" 
+          className="text-lg px-8 py-4 rounded-xl border-2 hover:border-blue-300 transition-all duration-300"
+          onClick={scrollToCourses}
+        >
+          📚 Переглянути курси
+        </Button>
+      </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-2xl mx-auto">
