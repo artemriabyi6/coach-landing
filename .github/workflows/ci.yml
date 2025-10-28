@@ -52,12 +52,13 @@ jobs:
       run: npx prisma db push --skip-generate
 
     - name: Run tests
-      run: npm test -- --coverage --watchAll=false
+      run: npm run test:ci
 
     - name: Run type check
-      run: npx tsc --noEmit --skipLibCheck
+      run: npm run type-check
 
     
+
   build:
     name: Build Project
     runs-on: ubuntu-latest
