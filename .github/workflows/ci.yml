@@ -33,8 +33,11 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.10.0' 
+        node-version: '20.18.0'  # ✅ Специфічна версія 20.x
         cache: 'npm'
+
+    - name: Verify Node.js version
+      run: node --version
 
     - name: Install dependencies
       run: npm install
@@ -57,7 +60,8 @@ jobs:
     - name: Run type check
       run: npm run type-check
 
-    
+    - name: Run linting
+      run: npm run lint
 
   build:
     name: Build Project
@@ -71,8 +75,11 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20.18.0'
         cache: 'npm'
+
+    - name: Verify Node.js version
+      run: node --version
 
     - name: Install dependencies
       run: npm install
