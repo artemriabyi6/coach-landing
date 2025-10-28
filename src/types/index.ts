@@ -5,7 +5,6 @@ export interface Course {
   price: number
   duration: string
   features: string[]
-  level: 'beginner' | 'advanced' | 'pro'
 }
 
 export interface ContactFormData {

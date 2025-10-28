@@ -38,6 +38,7 @@ model Course {
   price       Float
   duration    String
   features    String[]
+  level       String?  // ✅ Робимо опціональним в базі
   createdAt   DateTime @default(now())
   
   orders Order[]

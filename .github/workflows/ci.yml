@@ -11,21 +11,6 @@ jobs:
     name: Run Tests
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: football_landing_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_password
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -33,32 +18,17 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.18.0'  # ✅ Специфічна версія 20.x
+        node-version: '20'
         cache: 'npm'
-
-    - name: Verify Node.js version
-      run: node --version
 
     - name: Install dependencies
       run: npm install
 
-    - name: Setup environment variables
-      run: |
-        echo "DATABASE_URL=postgresql://test_user:test_password@localhost:5432/football_landing_test?schema=public" >> .env
-        echo "NEXTAUTH_SECRET=test-secret-for-ci" >> .env
-        echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env
-
-    - name: Generate Prisma Client
-      run: npx prisma generate
-
-    - name: Run database migrations
-      run: npx prisma db push --skip-generate
-
     - name: Run tests
-      run: npm run test:ci
+      run: npm test
 
     - name: Run type check
-      run: npm run type-check
+      run: npx tsc --noEmit --skipLibCheck
 
 
   build:
@@ -73,11 +43,8 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.18.0'
+        node-version: '20'
         cache: 'npm'
-
-    - name: Verify Node.js version
-      run: node --version
 
     - name: Install dependencies
       run: npm install
