@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  orders Order[]
+}
+
+model Order {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  amount    Float
+  status    String   // pending, completed, failed
+  createdAt DateTime @default(now())
+  
+  // Виправлені відношення
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  duration    String
+  features    String[]
+  createdAt   DateTime @default(now())
+  
+  orders Order[]
+}
+
+model Contact {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String
+  message       String
+  courseInterest String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
