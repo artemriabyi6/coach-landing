@@ -12,7 +12,7 @@ export interface ContactFormData {
   email: string
   phone: string
   message: string
-  courseInterest?: string
+  course?: string
 }
 
 export interface OrderData {
@@ -20,4 +20,16 @@ export interface OrderData {
   userEmail: string
   userName: string
   amount: number
+}
+
+export interface Contact {
+  id: string
+  name: string
+  email: string
+  phone: string
+  message: string
+  courseInterest: string | null
+  status: string
+  createdAt: Date
+  updatedAt: Date
 }

@@ -14,8 +14,7 @@ model User {
   phone     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  orders Order[]
+  orders    Order[]
 }
 
 model Order {
@@ -23,12 +22,10 @@ model Order {
   userId    String
   courseId  String
   amount    Float
-  status    String   // pending, completed, failed
+  status    String
   createdAt DateTime @default(now())
-  
-  // Виправлені відношення
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Course {
@@ -38,19 +35,21 @@ model Course {
   price       Float
   duration    String
   features    String[]
-  level       String?  // ✅ Робимо опціональним в базі
   createdAt   DateTime @default(now())
-  
-  orders Order[]
+  level       String?
+  orders      Order[]
 }
 
 model Contact {
-  id            String   @id @default(cuid())
-  name          String
-  email         String
-  phone         String
-  message       String
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String
+  message        String
+  status         String   @default("new")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   courseInterest String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+
+  @@map("contacts")
 }
