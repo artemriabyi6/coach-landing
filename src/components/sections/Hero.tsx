@@ -18,11 +18,6 @@ export function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-100/50 via-transparent to-transparent"></div>
       
       <div className="text-center max-w-6xl mx-auto relative z-10">
-        <div className="mb-8">
-          <span className="inline-block px-4 py-2 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mb-4">
-            🚀 Професійне тренування
-          </span>
-        </div>
         
         <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight">
           Прокачай свій

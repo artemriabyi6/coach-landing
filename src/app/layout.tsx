@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import AuthSessionProvider from '../providers/session-provider'
 import './globals.css'
 import { Header } from '../components/sections/Header'
 
@@ -18,8 +19,12 @@ export default function RootLayout({
   return (
     <html lang="uk">
       <body className={inter.className}>
-        <Header />
-        {children}
+        <AuthSessionProvider> {/* ✅ Використовуємо наш провайдер */}
+          <Header />
+          <main className="pt-16">
+            {children}
+          </main>
+        </AuthSessionProvider>
       </body>
     </html>
   )

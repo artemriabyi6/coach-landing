@@ -1,15 +1,15 @@
-'use client'
+"use client";
 
-import { Button } from '../ui/Button'
+import { Button } from "../ui/Button";
 
 export function Footer() {
   const scrollToSection = (sectionId: string) => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
-  }
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <footer className="bg-gray-900 text-white">
@@ -22,22 +22,28 @@ export function Footer() {
               <span className="text-xl font-bold">CoachPro</span>
             </div>
             <p className="text-gray-400 mb-4 max-w-md">
-              Професійне тренування для футболістів 16-35 років. 
-              Індивідуальний підхід, сучасні методики, доведені результати.
+              Професійне тренування для футболістів 16-35 років. Індивідуальний
+              підхід, сучасні методики, доведені результати.
             </p>
-            <Button 
+            <Button
               onClick={scrollToTop}
-              variant="outline" 
+              variant="outline"
               className="border-gray-600 text-white hover:bg-gray-800"
             >
               Нагору ↑
             </Button>
             <button
-  onClick={() => window.open('/admin', '_blank')}
-  className="block text-gray-400 hover:text-white transition-colors text-left"
->
-  Адмін-панель
-</button>
+              onClick={() => window.open("/admin", "_blank")}
+              className="block text-gray-400 hover:text-white transition-colors text-left"
+            >
+              Адмін-панель
+            </button>
+            <button
+              onClick={() => window.open("/analytics", "_blank")}
+              className="block text-gray-400 hover:text-white transition-colors text-left"
+            >
+              Аналітика
+            </button>
           </div>
 
           {/* Navigation */}
@@ -45,9 +51,9 @@ export function Footer() {
             <h3 className="font-semibold text-lg mb-4">Навігація</h3>
             <nav className="space-y-2">
               {[
-                { name: 'Головна', id: 'hero' },
-                { name: 'Курси', id: 'courses' },
-                { name: 'Контакти', id: 'contact' }
+                { name: "Головна", id: "hero" },
+                { name: "Курси", id: "courses" },
+                { name: "Контакти", id: "contact" },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -68,7 +74,7 @@ export function Footer() {
               <p>📞 +380 (99) 123-45-67</p>
               <p>🕒 Пн-Пт: 9:00 - 18:00</p>
               <div className="flex space-x-4 mt-4">
-                {['Facebook', 'Instagram', 'Telegram'].map((social) => (
+                {["Facebook", "Instagram", "Telegram"].map((social) => (
                   <button
                     key={social}
                     className="text-gray-400 hover:text-white transition-colors"
@@ -87,5 +93,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

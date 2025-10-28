@@ -54,3 +54,47 @@ export async function getContacts(): Promise<Contact[]> {
     return []
   }
 }
+
+// Оновлюємо статус заявки
+// Оновлюємо статус заявки
+// Оновлюємо статус заявки
+export async function updateContactStatus(contactId: string, status: string) {
+  try {
+    console.log('🔄 Updating contact status:', contactId, '→', status)
+    
+    const contact = await prisma.contact.update({
+      where: { 
+        id: contactId // ✅ Переконуємося, що contactId передається
+      },
+      data: { 
+        status: status,
+        updatedAt: new Date()
+      }
+    })
+    
+    console.log('✅ Contact status updated successfully:', contact.id)
+    return contact
+  } catch (error) {
+    console.error('❌ Error updating contact status:', error)
+    throw new Error(`Не вдалося оновити статус: ${error instanceof Error ? error.message : 'Невідома помилка'}`)
+  }
+}
+
+// Видаляємо заявку
+export async function deleteContact(contactId: string) {
+  try {
+    console.log('🗑️ Deleting contact:', contactId)
+    
+    await prisma.contact.delete({
+      where: { 
+        id: contactId // ✅ Переконуємося, що contactId передається
+      }
+    })
+    
+    console.log('✅ Contact deleted successfully')
+    return true
+  } catch (error) {
+    console.error('❌ Error deleting contact:', error)
+    throw new Error(`Не вдалося видалити заявку: ${error instanceof Error ? error.message : 'Невідома помилка'}`)
+  }
+}
