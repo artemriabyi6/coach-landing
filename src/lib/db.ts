@@ -98,3 +98,14 @@ export async function deleteContact(contactId: string) {
     throw new Error(`Не вдалося видалити заявку: ${error instanceof Error ? error.message : 'Невідома помилка'}`)
   }
 }
+
+export async function testConnection() {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    console.log('✅ Database connection successful')
+    return true
+  } catch (error) {
+    console.error('❌ Database connection failed:', error)
+    return false
+  }
+}

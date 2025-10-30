@@ -7,21 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Об'єднана модель User
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String?   // ✅ Має бути опціональним
-  name          String?
-  phone         String?
-  role          String    @default("user") // ✅ Має бути
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String?
+  name      String?
+  phone     String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Відношення
-  orders        Order[]
-  accounts      Account[]
-  sessions      Session[]
+  orders       Order[]
+  accounts     Account[]
+  sessions     Session[]
+  payments     Payment[]
+  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
 
   @@map("users")
 }
@@ -33,8 +34,12 @@ model Order {
   amount    Float
   status    String
   createdAt DateTime @default(now())
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Відношення
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
 }
 
 model Course {
@@ -46,7 +51,13 @@ model Course {
   features    String[]
   createdAt   DateTime @default(now())
   level       String?
-  orders      Order[]
+
+  // Відношення
+  orders       Order[]
+  payments     Payment[]
+  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
+
+  @@map("courses")
 }
 
 model Contact {
@@ -61,6 +72,28 @@ model Contact {
   courseInterest String?
 
   @@map("contacts")
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  stripeId      String   @unique
+  amount        Float
+  currency      String   @default("uah")
+  status        String // pending, succeeded, failed
+  courseId      String
+  customerEmail String
+  customerName  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        String?
+  metadata      Json?
+
+  // Відношення
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
+
+  @@map("payments")
 }
 
 model Account {
@@ -100,4 +133,24 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model CourseAccess {
+  id            String   @id @default(cuid())
+  userId        String?
+  courseId      String
+  customerEmail String
+  customerName  String
+  paymentId     String
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  metadata      Json?
+
+  // Відношення
+  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("course_accesses")
 }
