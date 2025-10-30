@@ -172,25 +172,7 @@ export function FeaturesSection({ courses }: FeaturesSectionProps) {
         </div>
 
         {/* Додаткова інформація про оплату */}
-        <div className="mt-12 bg-blue-50 rounded-lg p-6 max-w-2xl mx-auto">
-          <h3 className="text-lg font-semibold text-blue-900 mb-3">💳 Безпечна онлайн-оплата</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            {[
-              { name: 'Visa', icon: '💳' },
-              { name: 'Mastercard', icon: '💳' },
-              { name: 'LiqPay', icon: '🏦' },
-              { name: 'Приват24', icon: '📱' },
-            ].map((method) => (
-              <div key={method.name} className="flex flex-col items-center">
-                <span className="text-2xl mb-1">{method.icon}</span>
-                <span className="text-sm text-gray-700">{method.name}</span>
-              </div>
-            ))}
-          </div>
-          <p className="text-sm text-blue-800 text-center mt-3">
-            Миттєвий доступ до курсу після оплати • Гарантія безпеки LiqPay
-          </p>
-        </div>
+      
       </div>
 
       {/* Course Details Modal */}

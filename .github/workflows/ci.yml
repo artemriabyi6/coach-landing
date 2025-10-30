@@ -26,7 +26,7 @@ jobs:
 
     - name: Create test environment file
       run: |
-        echo "DATABASE_URL=postgresql://test:test@localhost:5432/test" > .env
+        echo "DATABASE_URL=file:./test.db" > .env
         echo "NEXTAUTH_SECRET=test-secret-$(openssl rand -base64 32)" >> .env
         echo "NEXT_PUBLIC_APP_URL=http://localhost:3000" >> .env
         echo "LIQPAY_PUBLIC_KEY=mock_public_key" >> .env
@@ -34,6 +34,9 @@ jobs:
 
     - name: Generate Prisma Client
       run: npx prisma generate
+
+    - name: Setup SQLite database for tests
+      run: npx prisma db push --accept-data-loss
 
     - name: Run tests
       run: npm test
@@ -61,13 +64,16 @@ jobs:
 
     - name: Create production environment file
       run: |
-        echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+        echo "DATABASE_URL=file:./build.db" > .env
         echo "NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}" >> .env
         echo "LIQPAY_PUBLIC_KEY=${{ secrets.LIQPAY_PUBLIC_KEY }}" >> .env
         echo "LIQPAY_PRIVATE_KEY=${{ secrets.LIQPAY_PRIVATE_KEY }}" >> .env
 
     - name: Generate Prisma Client
       run: npx prisma generate
+
+    - name: Setup SQLite database for build
+      run: npx prisma db push --accept-data-loss
 
     - name: Build project
       run: npm run build
