@@ -17,40 +17,6 @@ export interface CourseFilters {
   maxPrice?: number
 }
 
-// Mock дані для build time
-const mockCourses: Course[] = [
-  {
-    id: 'course-football-beginners',
-    title: 'Футбольний курс для початківців',
-    description: 'Основи футболу для початківців: техніка, тактика, фізична підготовка',
-    price: 1500,
-    duration: '4 тижні',
-    level: 'Початківець',
-    features: ['Відео уроки', 'Персональний фідбек', 'Тренувальний план'],
-    createdAt: new Date()
-  },
-  {
-    id: 'course-football-advanced',
-    title: 'Професійна підготовка футболістів',
-    description: 'Просунута техніка, тактика гри, стратегія та аналіз',
-    price: 3000,
-    duration: '8 тижнів',
-    level: 'Просунутий',
-    features: ['Індивідуальні консультації', 'Аналіз гри', 'Тактичні завдання'],
-    createdAt: new Date()
-  },
-  {
-    id: 'course-personal-training',
-    title: 'Індивідуальні тренування',
-    description: 'Персональні тренування з професійним тренером',
-    price: 5000,
-    duration: 'Індивідуально',
-    level: 'Всі рівні',
-    features: ['Особистий тренер', 'Гнучкий графік', 'Індивідуальний підхід'],
-    createdAt: new Date()
-  }
-]
-
 // Тип для where умови Prisma
 interface WhereClause {
   level?: string
@@ -64,12 +30,6 @@ interface WhereClause {
  * Отримати всі доступні курси з бази даних
  */
 export async function getAvailableCourses(filters?: CourseFilters): Promise<Course[]> {
-  // Для build time повертаємо mock дані
-  if (process.env.NEXT_PHASE === 'phase-production-build') {
-    console.log('🏗️ Build phase - returning mock courses')
-    return mockCourses
-  }
-
   try {
     console.log('📚 Fetching courses from database...')
     
@@ -110,11 +70,6 @@ export async function getAvailableCourses(filters?: CourseFilters): Promise<Cour
 
     console.log(`✅ Found ${courses.length} courses`)
 
-    if (courses.length === 0) {
-      console.log('ℹ️ No courses in database, returning mock data')
-      return mockCourses
-    }
-
     // Трансформуємо дані до потрібного формату
     return courses.map(course => ({
       id: course.id,
@@ -128,9 +83,8 @@ export async function getAvailableCourses(filters?: CourseFilters): Promise<Cour
     }))
 
   } catch (error) {
-    console.error('❌ Error fetching courses, returning mock data:', error)
-    // Повертаємо mock дані замість помилки
-    return mockCourses
+    console.error('❌ Error fetching courses:', error)
+    throw new Error('Не вдалося завантажити курси з бази даних')
   }
 }
 
