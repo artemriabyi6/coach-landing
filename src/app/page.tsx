@@ -2,28 +2,15 @@ import { HeroSection } from '../components/sections/Hero'
 import { FeaturesSection } from '../components/sections/Features'
 import { ContactForm } from '../components/sections/ContactForm'
 import { Footer } from '../components/sections/Footer'
+import { getAvailableCourses } from '../lib/courses'
 
-// Просто статичні дані
-const courses = [
-  {
-    id: '1',
-    title: 'Базовий курс',
-    description: 'Основи футбольної майстерності',
-    price: 2999,
-    duration: '8 тижнів',
-    features: ['Індивідуальний підхід', 'Відеоаналіз', 'Щотижневі звіти'],
-  },
-  {
-    id: '2',
-    title: 'Просунутий курс',
-    description: 'Для гравців, які хочуть вийти на новий рівень', 
-    price: 4999,
-    duration: '12 тижнів',
-    features: ['Тактичний аналіз', 'Робота з психологом', 'Фізична підготовка'],
-  }
-]
+// Вимкнути динамічний рендеринг для головної сторінки
+export const dynamic = 'force-static'
+export const revalidate = 3600 // 1 година
 
-export default function HomePage() {
+export default async function HomePage() {
+  const courses = await getAvailableCourses()
+
   return (
     <main className="min-h-screen">
       <HeroSection />

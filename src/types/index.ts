@@ -4,7 +4,10 @@ export interface Course {
   description: string
   price: number
   duration: string
-  features: string[]
+  level?: string
+  features?: string[]
+  image?: string
+  createdAt?: Date
 }
 
 export interface ContactFormData {
@@ -33,3 +36,4 @@ export interface Contact {
   createdAt: Date
   updatedAt: Date
 }
+
