@@ -1,128 +1,131 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma, testConnection } from '../../../../lib/db'
-import { liqpayService } from '../../../../lib/liqpay'
+import { NextResponse } from 'next/server'
+import { prisma } from '../../../../lib/db'
+import CryptoJS from 'crypto-js'
 
-export async function POST(request: NextRequest) {
+interface CheckoutRequest {
+  courseId: string
+  customerEmail: string
+  customerName: string
+}
+
+export async function POST(request: Request) {
   try {
-    console.log('=== Starting LiqPay checkout process ===')
+    console.log('🔄 Processing checkout request...')
     
-    const dbConnected = await testConnection()
-    if (!dbConnected) {
-      return NextResponse.json(
-        { error: 'Помилка підключення до бази даних' },
-        { status: 500 }
-      )
-    }
+    const body: CheckoutRequest = await request.json()
+    console.log('📦 Checkout data:', body)
 
-    const body = await request.json()
-    console.log('Request body:', body)
-    
-    const { courseId, customerEmail, customerName } = body
-
-    if (!courseId || !customerEmail || !customerName) {
+    // Перевірка обов'язкових полів
+    if (!body.courseId || !body.customerEmail || !body.customerName) {
       return NextResponse.json(
-        { 
-          error: 'Відсутні обов\'язкові поля',
-          required: ['courseId', 'customerEmail', 'customerName'],
-          received: { courseId, customerEmail, customerName }
-        },
+        { error: 'Відсутні обов\'язкові поля' },
         { status: 400 }
       )
     }
 
-    // Додамо debug інформацію про всі курси
-    const allCourses = await prisma.course.findMany({
-      select: { id: true, title: true }
-    })
-    console.log('📊 All available courses:', allCourses)
+    // Перевірка з'єднання з базою даних
+    console.log('🔍 Testing database connection...')
+    await prisma.$queryRaw`SELECT 1`
+    console.log('✅ Database connection successful')
 
+    // Пошук курсу в базі даних
+    console.log('🔍 Searching for course:', body.courseId)
     const course = await prisma.course.findUnique({
-      where: { id: courseId }
+      where: { id: body.courseId }
     })
 
     if (!course) {
-      console.error('❌ Course not found:', courseId)
+      console.error('❌ Course not found:', body.courseId)
       return NextResponse.json(
-        { 
-          error: 'Курс не знайдено',
-          requestedId: courseId,
-          availableCourses: allCourses.map(c => ({ id: c.id, title: c.title }))
-        },
+        { error: 'Курс не знайдено' },
         { status: 404 }
       )
     }
 
-    console.log('✅ Course found:', { id: course.id, title: course.title, price: course.price })
+    console.log('✅ Course found:', course.title)
 
-    const orderId = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    const paymentResult = await liqpayService.createPayment({
-      amount: course.price,
-      currency: 'UAH',
-      orderId: orderId,
-      description: `Оплата курсу: ${course.title}`,
-      productName: course.title,
-      customerEmail: customerEmail,
-      customerName: customerName
+    // Створення запису про платіж в базі даних
+    console.log('💾 Creating payment record...')
+    const payment = await prisma.payment.create({
+      data: {
+        amount: course.price,
+        customerEmail: body.customerEmail,
+        customerName: body.customerName,
+        courseId: body.courseId,
+        status: 'pending',
+        stripeId: `liqpay_${Date.now()}`
+      }
     })
 
-    console.log('✅ LiqPay payment created:', paymentResult)
+    console.log('✅ Payment record created:', payment.id)
 
-    try {
-      const payment = await prisma.payment.create({
-        data: {
-          stripeId: orderId,
-          amount: course.price,
-          currency: 'UAH',
-          status: 'pending',
-          courseId: course.id,
-          customerEmail,
-          customerName,
-          userId: null,
-          metadata: {
-            liqpayOrderId: orderId,
-            paymentData: paymentResult.data,
-            paymentSignature: paymentResult.signature
-          }
-        }
-      })
-      console.log('✅ Payment record created:', payment.id)
-    } catch (dbError) {
-      console.error('❌ Error creating payment record:', dbError)
+    // Налаштування LiqPay
+    const LIQPAY_PUBLIC_KEY = process.env.LIQPAY_PUBLIC_KEY
+    const LIQPAY_PRIVATE_KEY = process.env.LIQPAY_PRIVATE_KEY
+
+    if (!LIQPAY_PUBLIC_KEY || !LIQPAY_PRIVATE_KEY) {
+      console.error('❌ LiqPay keys not configured')
+      return NextResponse.json(
+        { error: 'Платіжна система не налаштована' },
+        { status: 500 }
+      )
     }
 
-    console.log('=== LiqPay checkout process completed successfully ===')
+    // Параметри для LiqPay
+    const liqpayData = {
+      public_key: LIQPAY_PUBLIC_KEY,
+      version: '3',
+      action: 'pay',
+      amount: course.price,
+      currency: 'UAH',
+      description: `Оплата курсу: ${course.title}`,
+      order_id: payment.id,
+      result_url: `${process.env.NEXTAUTH_URL}/payment/success?payment_id=${payment.id}`,
+      server_url: `${process.env.NEXTAUTH_URL}/api/payments/webhook`,
+      language: 'uk',
+      customer: body.customerEmail,
+      product_category: 'education',
+      product_description: course.description,
+      product_name: course.title
+    }
 
-    return NextResponse.json({ 
+    console.log('📦 LiqPay data prepared:', liqpayData)
+
+    // Кодування даних для LiqPay
+    const dataString = Buffer.from(JSON.stringify(liqpayData)).toString('base64')
+    
+    // Створення підпису
+    const signatureString = LIQPAY_PRIVATE_KEY + dataString + LIQPAY_PRIVATE_KEY
+    const signature = CryptoJS.SHA1(signatureString).toString(CryptoJS.enc.Base64)
+
+    console.log('✅ LiqPay data and signature created')
+
+    // Повертаємо дані для клієнта
+    return NextResponse.json({
       success: true,
-      orderId: orderId,
-      paymentUrl: paymentResult.payment_url,
-      formData: paymentResult.data,
-      signature: paymentResult.signature
+      paymentId: payment.id,
+      paymentUrl: 'https://www.liqpay.ua/api/3/checkout',
+      formData: dataString,
+      signature: signature,
+      course: {
+        id: course.id,
+        title: course.title,
+        price: course.price
+      },
+      message: 'Платіж успішно ініціалізовано'
     })
 
   } catch (error) {
-    console.error('❌ Error creating LiqPay payment:', error)
+    console.error('❌ Checkout error:', error)
     
-    let errorMessage = 'Невідома помилка'
-    if (error instanceof Error) {
-      errorMessage = error.message
-    }
-
+    const errorMessage = error instanceof Error ? error.message : 'Невідома помилка'
+    
     return NextResponse.json(
       { 
-        success: false,
-        error: 'Помилка при створенні платежу',
-        message: errorMessage
+        error: 'Помилка підключення до бази даних',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
       },
       { status: 500 }
     )
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ 
-    message: 'Payments checkout endpoint is working',
-    timestamp: new Date().toISOString()
-  })
 }
