@@ -12,7 +12,8 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --coverage --watchAll=false",
     "type-check": "tsc --noEmit --skipLibCheck",
-    "create-admin": "npx tsx scripts/create-admin.ts"
+    "create-admin": "npx tsx scripts/create-admin.ts",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
