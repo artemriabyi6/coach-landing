@@ -5,7 +5,14 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query'] : ['error'],
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  }
+})
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 
@@ -18,7 +25,7 @@ export async function createContact(data: ContactFormData) {
         email: data.email,
         phone: data.phone,
         message: data.message,
-        courseInterest: data.course || null,  // Використовуємо courseInterest
+        courseInterest: data.course || null,
       },
     })
     console.log('✅ Contact saved to database:', contact.id)
@@ -45,7 +52,7 @@ export async function getContacts(): Promise<Contact[]> {
       phone: contact.phone,
       message: contact.message,
       courseInterest: contact.courseInterest,
-      status: contact.status, // ✅ Тепер поле має бути доступне
+      status: contact.status,
       createdAt: contact.createdAt,
       updatedAt: contact.updatedAt
     }))
@@ -56,15 +63,13 @@ export async function getContacts(): Promise<Contact[]> {
 }
 
 // Оновлюємо статус заявки
-// Оновлюємо статус заявки
-// Оновлюємо статус заявки
 export async function updateContactStatus(contactId: string, status: string) {
   try {
     console.log('🔄 Updating contact status:', contactId, '→', status)
     
     const contact = await prisma.contact.update({
       where: { 
-        id: contactId // ✅ Переконуємося, що contactId передається
+        id: contactId
       },
       data: { 
         status: status,
@@ -87,7 +92,7 @@ export async function deleteContact(contactId: string) {
     
     await prisma.contact.delete({
       where: { 
-        id: contactId // ✅ Переконуємося, що contactId передається
+        id: contactId
       }
     })
     
@@ -107,5 +112,61 @@ export async function testConnection() {
   } catch (error) {
     console.error('❌ Database connection failed:', error)
     return false
+  }
+}
+
+// Додаткові утиліти для тестування
+interface TestConnectionResult {
+  success: boolean
+  result?: unknown
+  error?: string
+  code?: string
+}
+
+interface DatabaseStats {
+  courses: number
+  users: number
+  contacts: number
+  payments: number
+}
+
+export async function testDatabaseConnection(): Promise<TestConnectionResult> {
+  try {
+    const result = await prisma.$queryRaw`SELECT 1 as test`
+    return { success: true, result }
+  } catch (error) {
+    console.error('Database connection test failed:', error)
+    const dbError = error as { message: string; code?: string }
+    return { 
+      success: false, 
+      error: dbError.message,
+      code: dbError.code
+    }
+  }
+}
+
+export async function getDatabaseStats(): Promise<DatabaseStats | null> {
+  try {
+    const [
+      coursesCount,
+      usersCount, 
+      contactsCount,
+      paymentsCount
+    ] = await Promise.all([
+      prisma.course.count(),
+      prisma.user.count(),
+      prisma.contact.count(),
+      prisma.payment.count()
+    ])
+
+    return {
+      courses: coursesCount,
+      users: usersCount,
+      contacts: contactsCount,
+      payments: paymentsCount
+    }
+  } catch (error) {
+    console.error('Error getting database stats:', error)
+    return null
   }
 }
