@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
 
 export async function GET() {
-  let client
+  let client;
   try {
     console.log('🔍 Testing database write operation...')
     
