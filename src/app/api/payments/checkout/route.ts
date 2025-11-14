@@ -1,5 +1,6 @@
+// app/api/payments/checkout/route.ts
 import { NextResponse } from 'next/server'
-import { prisma } from '../../../../lib/db'
+import { Pool } from 'pg'
 import CryptoJS from 'crypto-js'
 
 interface CheckoutRequest {
@@ -9,6 +10,7 @@ interface CheckoutRequest {
 }
 
 export async function POST(request: Request) {
+  let client;
   try {
     console.log('🔄 Processing checkout request...')
     
@@ -23,19 +25,47 @@ export async function POST(request: Request) {
       )
     }
 
-    // Перевірка з'єднання з базою даних
-    console.log('🔍 Testing database connection...')
-    await prisma.$queryRaw`SELECT 1`
-    console.log('✅ Database connection successful')
-
-    // Пошук курсу в базі даних
-    console.log('🔍 Searching for course:', body.courseId)
-    const course = await prisma.course.findUnique({
-      where: { id: body.courseId }
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
     })
 
+    client = await pool.connect()
+
+    // Пошук курсу - спробуємо різні варіанти назв таблиць
+    console.log('🔍 Searching for course:', body.courseId)
+    
+    let course;
+    try {
+      // Спробуємо знайти курс в різних таблицях
+      const courseResult = await client.query(
+        'SELECT * FROM courses WHERE id = $1',
+        [body.courseId]
+      )
+      if (courseResult.rows.length > 0) {
+        course = courseResult.rows[0]
+      }
+    } catch (e) {
+      console.log('Courses table not found in lowercase, trying TitleCase...')
+    }
+
+    // Якщо не знайшли, спробуємо "Course" (як в Prisma)
     if (!course) {
-      console.error('❌ Course not found:', body.courseId)
+      try {
+        const courseResult = await client.query(
+          'SELECT * FROM "Course" WHERE id = $1',
+          [body.courseId]
+        )
+        if (courseResult.rows.length > 0) {
+          course = courseResult.rows[0]
+        }
+      } catch (e) {
+        console.log('Course table not found in TitleCase either')
+      }
+    }
+
+    if (!course) {
+      console.error('❌ Course not found in any table:', body.courseId)
       return NextResponse.json(
         { error: 'Курс не знайдено' },
         { status: 404 }
@@ -44,22 +74,50 @@ export async function POST(request: Request) {
 
     console.log('✅ Course found:', course.title)
 
-    // Створення запису про платіж в базі даних
+    // Створення запису про платіж - також спробуємо різні варіанти
     console.log('💾 Creating payment record...')
-    const payment = await prisma.payment.create({
-      data: {
-        amount: course.price,
-        customerEmail: body.customerEmail,
-        customerName: body.customerName,
-        courseId: body.courseId,
-        status: 'pending',
-        stripeId: `liqpay_${Date.now()}`
-      }
-    })
+    
+    let payment;
+    try {
+      // Спочатку спробуємо "payments" (нижній регістр)
+      const paymentResult = await client.query(
+        `INSERT INTO payments 
+         (amount, customer_email, customer_name, course_id, status, stripe_id, created_at, updated_at) 
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
+         RETURNING *`,
+        [
+          course.price,
+          body.customerEmail,
+          body.customerName,
+          body.courseId,
+          'pending',
+          `liqpay_${Date.now()}`
+        ]
+      )
+      payment = paymentResult.rows[0]
+    } catch (e) {
+      console.log('Payments table not found in lowercase, trying "Payment"...')
+      // Спробуємо "Payment" (як в Prisma)
+      const paymentResult = await client.query(
+        `INSERT INTO "Payment" 
+         (amount, "customerEmail", "customerName", "courseId", status, "stripeId", "createdAt", "updatedAt") 
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
+         RETURNING *`,
+        [
+          course.price,
+          body.customerEmail,
+          body.customerName,
+          body.courseId,
+          'pending',
+          `liqpay_${Date.now()}`
+        ]
+      )
+      payment = paymentResult.rows[0]
+    }
 
     console.log('✅ Payment record created:', payment.id)
 
-    // Налаштування LiqPay
+    // Решта коду залишається без змін...
     const LIQPAY_PUBLIC_KEY = process.env.LIQPAY_PUBLIC_KEY
     const LIQPAY_PRIVATE_KEY = process.env.LIQPAY_PRIVATE_KEY
 
@@ -71,7 +129,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Параметри для LiqPay
     const liqpayData = {
       public_key: LIQPAY_PUBLIC_KEY,
       version: '3',
@@ -91,16 +148,12 @@ export async function POST(request: Request) {
 
     console.log('📦 LiqPay data prepared:', liqpayData)
 
-    // Кодування даних для LiqPay
     const dataString = Buffer.from(JSON.stringify(liqpayData)).toString('base64')
-    
-    // Створення підпису
     const signatureString = LIQPAY_PRIVATE_KEY + dataString + LIQPAY_PRIVATE_KEY
     const signature = CryptoJS.SHA1(signatureString).toString(CryptoJS.enc.Base64)
 
     console.log('✅ LiqPay data and signature created')
 
-    // Повертаємо дані для клієнта
     return NextResponse.json({
       success: true,
       paymentId: payment.id,
@@ -118,14 +171,14 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('❌ Checkout error:', error)
     
-    const errorMessage = error instanceof Error ? error.message : 'Невідома помилка'
-    
     return NextResponse.json(
       { 
         error: 'Помилка підключення до бази даних',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined
       },
       { status: 500 }
     )
+  } finally {
+    if (client) client.release()
   }
 }
