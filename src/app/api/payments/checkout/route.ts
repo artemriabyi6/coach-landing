@@ -1,4 +1,3 @@
-// Оновіть ваш checkout API - додайте більше логування
 // app/api/payments/checkout/route.ts
 import { NextResponse } from 'next/server'
 import { Pool } from 'pg'
@@ -10,11 +9,14 @@ export async function POST(request: Request) {
     console.log('=== CHECKOUT START ===')
     const body = await request.json()
     console.log('Raw request body:', body)
-    console.log('CourseId from request:', body.courseId)
-    console.log('CourseId type:', typeof body.courseId)
 
-    // Спроба очистити ID від можливих зайвих символів
-    const cleanCourseId = body.courseId.replace(/'/g, '').trim()
+    // ФІКС: Видаляємо лапки з courseId
+    const rawCourseId = body.courseId
+    const cleanCourseId = typeof rawCourseId === 'string' 
+      ? rawCourseId.replace(/'/g, '').trim()
+      : String(rawCourseId).replace(/'/g, '').trim()
+    
+    console.log('Original courseId:', rawCourseId)
     console.log('Cleaned courseId:', cleanCourseId)
 
     if (!cleanCourseId || !body.customerEmail || !body.customerName) {
@@ -31,52 +33,37 @@ export async function POST(request: Request) {
 
     client = await pool.connect()
 
-    // Додамо декілька варіантів пошуку курсу
-    console.log('Searching for course with ID:', cleanCourseId)
+    // Пошук курсу по очищеному ID
+    console.log('Searching for course with cleaned ID:', cleanCourseId)
     
-    let courseResult;
-    try {
-      // Спроба 1: точний пошук
-      courseResult = await client.query(
-        'SELECT * FROM courses WHERE id = $1',
-        [cleanCourseId]
-      )
-      console.log('Exact match result:', courseResult.rows)
-      
-      // Спроба 2: пошук по частині ID
-      if (courseResult.rows.length === 0) {
-        console.log('Trying partial match...')
-        courseResult = await client.query(
-          'SELECT * FROM courses WHERE id LIKE $1',
-          [`%${cleanCourseId}%`]
-        )
-        console.log('Partial match result:', courseResult.rows)
-      }
-      
-      // Спроба 3: отримати всі курси для дебагу
-      if (courseResult.rows.length === 0) {
-        console.log('Getting all courses for debug...')
-        const allCourses = await client.query('SELECT id, title FROM courses LIMIT 10')
-        console.log('All available courses:', allCourses.rows)
-      }
-      
-    } catch (dbError) {
-      console.error('Database query error:', dbError)
-      throw dbError
-    }
+    const courseResult = await client.query(
+      'SELECT * FROM courses WHERE id = $1',
+      [cleanCourseId]
+    )
 
+    console.log('Courses found:', courseResult.rows.length)
+    
     if (courseResult.rows.length === 0) {
-      console.error('❌ No course found with any method')
+      // Додаткова інформація для дебагу
+      const allCourses = await client.query('SELECT id, title FROM courses LIMIT 10')
+      console.log('All available courses:', allCourses.rows)
+      
       return NextResponse.json(
-        { error: 'Курс не знайдено' },
+        { 
+          error: 'Курс не знайдено',
+          debug: {
+            requestedId: cleanCourseId,
+            availableCourses: allCourses.rows
+          }
+        },
         { status: 404 }
       )
     }
 
     const course = courseResult.rows[0]
-    console.log('✅ Course found:', course)
+    console.log('✅ Course found:', course.id, course.title, course.price)
 
-    // Решта коду без змін...
+    // Створення платежу
     const paymentResult = await client.query(
       `INSERT INTO payments 
        (amount, currency, status, "courseId", "customerEmail", "customerName", "stripeId", "createdAt", "updatedAt") 
@@ -86,21 +73,27 @@ export async function POST(request: Request) {
         course.price,
         'UAH',
         'pending',
-        cleanCourseId,
+        cleanCourseId, // Використовуємо очищений ID
         body.customerEmail,
         body.customerName,
         `liqpay_${Date.now()}`
       ]
     )
 
-    console.log('✅ Payment created')
+    const payment = paymentResult.rows[0]
+    console.log('✅ Payment created:', payment.id)
 
-    // LiqPay логіка...
+    // LiqPay
     const LIQPAY_PUBLIC_KEY = process.env.LIQPAY_PUBLIC_KEY
     const LIQPAY_PRIVATE_KEY = process.env.LIQPAY_PRIVATE_KEY
+    const NEXTAUTH_URL = process.env.NEXTAUTH_URL
 
     if (!LIQPAY_PUBLIC_KEY || !LIQPAY_PRIVATE_KEY) {
-      throw new Error('LiqPay keys missing')
+      throw new Error('LiqPay keys not configured')
+    }
+
+    if (!NEXTAUTH_URL) {
+      throw new Error('NEXTAUTH_URL not configured')
     }
 
     const liqpayData = {
@@ -110,9 +103,9 @@ export async function POST(request: Request) {
       amount: course.price,
       currency: 'UAH',
       description: `Оплата курсу: ${course.title}`,
-      order_id: paymentResult.rows[0].id,
-      result_url: `${process.env.NEXTAUTH_URL}/payment/success?payment_id=${paymentResult.rows[0].id}`,
-      server_url: `${process.env.NEXTAUTH_URL}/api/payments/webhook`,
+      order_id: payment.id,
+      result_url: `${NEXTAUTH_URL}/payment/success?payment_id=${payment.id}`,
+      server_url: `${NEXTAUTH_URL}/api/payments/webhook`,
       language: 'uk',
       customer: body.customerEmail,
       product_category: 'education',
@@ -128,7 +121,7 @@ export async function POST(request: Request) {
     
     return NextResponse.json({
       success: true,
-      paymentId: paymentResult.rows[0].id,
+      paymentId: payment.id,
       paymentUrl: 'https://www.liqpay.ua/api/3/checkout',
       formData: dataString,
       signature: signature,
@@ -136,22 +129,26 @@ export async function POST(request: Request) {
         id: course.id,
         title: course.title,
         price: course.price
-      }
+      },
+      message: 'Платіж успішно ініціалізовано'
     })
 
   } catch (error) {
     console.error('=== CHECKOUT ERROR ===', error)
+    
     return NextResponse.json(
       { 
         error: 'Помилка сервера',
-        details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.message : 'Unknown error' : undefined
+        details: process.env.NODE_ENV === 'development' ? {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        } : undefined
       },
       { status: 500 }
     )
   } finally {
     if (client) {
       client.release()
-      console.log('Database client released')
     }
   }
 }
