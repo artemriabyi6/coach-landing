@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
+  engineType = "binary"
 }
 
 datasource db {
@@ -8,21 +9,19 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String?
-  name      String?
-  phone     String?
-  role      String   @default("user")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Відношення
-  orders       Order[]
+  id           String         @id @default(cuid())
+  email        String         @unique
+  password     String?
+  name         String?
+  phone        String?
+  role         String         @default("user")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   accounts     Account[]
-  sessions     Session[]
+  courseAccess CourseAccess[]
+  orders       Order[]
   payments     Payment[]
-  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
+  sessions     Session[]
 
   @@map("users")
 }
@@ -34,28 +33,24 @@ model Order {
   amount    Float
   status    String
   createdAt DateTime @default(now())
-
-  // Відношення
-  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("orders")
 }
 
 model Course {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  price       Float
-  duration    String
-  features    String[]
-  createdAt   DateTime @default(now())
-  level       String?
-
-  // Відношення
+  id           String         @id @default(cuid())
+  title        String
+  description  String
+  price        Float
+  duration     String
+  features     String[]
+  createdAt    DateTime       @default(now())
+  level        String?
+  courseAccess CourseAccess[]
   orders       Order[]
   payments     Payment[]
-  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
 
   @@map("courses")
 }
@@ -75,23 +70,21 @@ model Contact {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  stripeId      String   @unique
+  id            String         @id @default(cuid())
+  stripeId      String         @unique
   amount        Float
-  currency      String   @default("uah")
-  status        String // pending, succeeded, failed
+  currency      String         @default("uah")
+  status        String
   courseId      String
   customerEmail String
   customerName  String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
   userId        String?
   metadata      Json?
-
-  // Відношення
-  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseAccess CourseAccess[] // ✅ Додано відношення до CourseAccess
+  courseAccess  CourseAccess[]
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
@@ -102,15 +95,14 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -146,11 +138,9 @@ model CourseAccess {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   metadata      Json?
-
-  // Відношення
-  user    User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  payment       Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("course_accesses")
 }

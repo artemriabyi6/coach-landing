@@ -11,16 +11,20 @@ export async function GET() {
         description: true
       }
     })
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       success: true,
-      courses,
-      total: courses.length 
+      courses: courses,
+      total: courses.length
     })
   } catch (error) {
     console.error('Error fetching courses:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch courses' },
+      { 
+        success: false, 
+        error: 'Database error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     )
   }
