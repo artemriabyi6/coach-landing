@@ -32,92 +32,48 @@ export async function POST(request: Request) {
 
     client = await pool.connect()
 
-    // Пошук курсу - спробуємо різні варіанти назв таблиць
+    // Пошук курсу в таблиці courses (нижній регістр)
     console.log('🔍 Searching for course:', body.courseId)
     
-    let course;
-    try {
-      // Спробуємо знайти курс в різних таблицях
-      const courseResult = await client.query(
-        'SELECT * FROM courses WHERE id = $1',
-        [body.courseId]
-      )
-      if (courseResult.rows.length > 0) {
-        course = courseResult.rows[0]
-      }
-    } catch (e) {
-      console.log('Courses table not found in lowercase, trying TitleCase...')
-    }
+    const courseResult = await client.query(
+      'SELECT * FROM courses WHERE id = $1',
+      [body.courseId]
+    )
 
-    // Якщо не знайшли, спробуємо "Course" (як в Prisma)
-    if (!course) {
-      try {
-        const courseResult = await client.query(
-          'SELECT * FROM "Course" WHERE id = $1',
-          [body.courseId]
-        )
-        if (courseResult.rows.length > 0) {
-          course = courseResult.rows[0]
-        }
-      } catch (e) {
-        console.log('Course table not found in TitleCase either')
-      }
-    }
-
-    if (!course) {
-      console.error('❌ Course not found in any table:', body.courseId)
+    if (courseResult.rows.length === 0) {
+      console.error('❌ Course not found:', body.courseId)
       return NextResponse.json(
         { error: 'Курс не знайдено' },
         { status: 404 }
       )
     }
 
+    const course = courseResult.rows[0]
     console.log('✅ Course found:', course.title)
 
-    // Створення запису про платіж - також спробуємо різні варіанти
+    // Створення запису про платіж в таблиці payments (нижній регістр)
     console.log('💾 Creating payment record...')
     
-    let payment;
-    try {
-      // Спочатку спробуємо "payments" (нижній регістр)
-      const paymentResult = await client.query(
-        `INSERT INTO payments 
-         (amount, customer_email, customer_name, course_id, status, stripe_id, created_at, updated_at) 
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
-         RETURNING *`,
-        [
-          course.price,
-          body.customerEmail,
-          body.customerName,
-          body.courseId,
-          'pending',
-          `liqpay_${Date.now()}`
-        ]
-      )
-      payment = paymentResult.rows[0]
-    } catch (e) {
-      console.log('Payments table not found in lowercase, trying "Payment"...')
-      // Спробуємо "Payment" (як в Prisma)
-      const paymentResult = await client.query(
-        `INSERT INTO "Payment" 
-         (amount, "customerEmail", "customerName", "courseId", status, "stripeId", "createdAt", "updatedAt") 
-         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW()) 
-         RETURNING *`,
-        [
-          course.price,
-          body.customerEmail,
-          body.customerName,
-          body.courseId,
-          'pending',
-          `liqpay_${Date.now()}`
-        ]
-      )
-      payment = paymentResult.rows[0]
-    }
+    const paymentResult = await client.query(
+      `INSERT INTO payments 
+       (amount, currency, status, "courseId", "customerEmail", "customerName", "stripeId", "createdAt", "updatedAt") 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) 
+       RETURNING *`,
+      [
+        course.price,
+        'UAH', // Додаємо валюту
+        'pending',
+        body.courseId,
+        body.customerEmail,
+        body.customerName,
+        `liqpay_${Date.now()}`
+      ]
+    )
 
+    const payment = paymentResult.rows[0]
     console.log('✅ Payment record created:', payment.id)
 
-    // Решта коду залишається без змін...
+    // Налаштування LiqPay
     const LIQPAY_PUBLIC_KEY = process.env.LIQPAY_PUBLIC_KEY
     const LIQPAY_PRIVATE_KEY = process.env.LIQPAY_PRIVATE_KEY
 
@@ -142,7 +98,7 @@ export async function POST(request: Request) {
       language: 'uk',
       customer: body.customerEmail,
       product_category: 'education',
-      product_description: course.description,
+      product_description: course.description || '',
       product_name: course.title
     }
 
