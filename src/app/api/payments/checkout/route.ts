@@ -10,16 +10,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log('Raw request body:', body)
 
-    // ФІКС: Видаляємо лапки з courseId
-    const rawCourseId = body.courseId
-    const cleanCourseId = typeof rawCourseId === 'string' 
-      ? rawCourseId.replace(/'/g, '').trim()
-      : String(rawCourseId).replace(/'/g, '').trim()
-    
-    console.log('Original courseId:', rawCourseId)
-    console.log('Cleaned courseId:', cleanCourseId)
+    // НЕ видаляємо лапки, оскільки в базі ID з лапками!
+    const courseId = body.courseId
+    console.log('Using courseId as is:', courseId)
 
-    if (!cleanCourseId || !body.customerEmail || !body.customerName) {
+    if (!courseId || !body.customerEmail || !body.customerName) {
       return NextResponse.json(
         { error: 'Відсутні обов\'язкові поля' },
         { status: 400 }
@@ -33,29 +28,19 @@ export async function POST(request: Request) {
 
     client = await pool.connect()
 
-    // Пошук курсу по очищеному ID
-    console.log('Searching for course with cleaned ID:', cleanCourseId)
+    // Шукаємо курс з точним ID (включаючи лапки)
+    console.log('Searching for course with exact ID:', courseId)
     
     const courseResult = await client.query(
       'SELECT * FROM courses WHERE id = $1',
-      [cleanCourseId]
+      [courseId] // Використовуємо оригінальний ID з лапками
     )
 
     console.log('Courses found:', courseResult.rows.length)
     
     if (courseResult.rows.length === 0) {
-      // Додаткова інформація для дебагу
-      const allCourses = await client.query('SELECT id, title FROM courses LIMIT 10')
-      console.log('All available courses:', allCourses.rows)
-      
       return NextResponse.json(
-        { 
-          error: 'Курс не знайдено',
-          debug: {
-            requestedId: cleanCourseId,
-            availableCourses: allCourses.rows
-          }
-        },
+        { error: 'Курс не знайдено' },
         { status: 404 }
       )
     }
@@ -73,7 +58,7 @@ export async function POST(request: Request) {
         course.price,
         'UAH',
         'pending',
-        cleanCourseId, // Використовуємо очищений ID
+        courseId, // Використовуємо оригінальний ID з лапками
         body.customerEmail,
         body.customerName,
         `liqpay_${Date.now()}`

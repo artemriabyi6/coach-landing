@@ -296,7 +296,7 @@ export default function PaymentForm({ course, onSuccess, onCancel }: PaymentForm
         </div>
 
         <p className="text-xs text-gray-500 text-center">
-          Натискаючи `&quot;`Сплатити`&qout;`, ви погоджуєтесь з нашими умовами обробки даних
+          Натискаючи &quot;Сплатити&qout;, ви погоджуєтесь з нашими умовами обробки даних
         </p>
       </form>
     </div>
