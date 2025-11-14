@@ -48,6 +48,7 @@
     "@types/crypto-js": "4.2.2",
     "@types/jest": "30.0.0",
     "@types/node": "20.19.23",
+    "@types/pg": "8.15.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
